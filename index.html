@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Globe</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    cursor: grab;
+    background: linear-gradient(170deg, #b8e8ff 0%, #d6f0ff 30%, #e8f8ff 55%, #c5eaff 75%, #a8daff 100%);
+    position: relative;
+  }
+  body.dragging { cursor: grabbing; }
+
+  /* ── CLOUD LAYER ── */
+  .clouds {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .cloud {
+    position: absolute;
+    background: white;
+    border-radius: 50px;
+    opacity: 0.72;
+    filter: blur(2px);
+  }
+  .cloud::before, .cloud::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+  }
+
+  .c1 { width: 180px; height: 55px; top: 8%; left: -5%; animation: drift 28s linear infinite; }
+  .c1::before { width: 80px; height: 80px; top: -40px; left: 20px; }
+  .c1::after  { width: 60px; height: 60px; top: -30px; left: 80px; }
+
+  .c2 { width: 130px; height: 40px; top: 18%; left: 110%; animation: drift 22s linear infinite; animation-delay: -8s; opacity: 0.55; }
+  .c2::before { width: 60px; height: 60px; top: -30px; left: 15px; }
+  .c2::after  { width: 50px; height: 50px; top: -25px; left: 60px; }
+
+  .c3 { width: 220px; height: 65px; top: 75%; left: -10%; animation: drift 34s linear infinite; animation-delay: -15s; opacity: 0.6; }
+  .c3::before { width: 90px; height: 90px; top: -45px; left: 30px; }
+  .c3::after  { width: 70px; height: 70px; top: -38px; left: 110px; }
+
+  .c4 { width: 100px; height: 32px; top: 60%; left: 110%; animation: drift 18s linear infinite; animation-delay: -5s; opacity: 0.5; }
+  .c4::before { width: 45px; height: 45px; top: -22px; left: 10px; }
+  .c4::after  { width: 38px; height: 38px; top: -18px; left: 45px; }
+
+  .c5 { width: 160px; height: 48px; top: 40%; left: -8%; animation: drift 25s linear infinite; animation-delay: -20s; opacity: 0.45; }
+  .c5::before { width: 70px; height: 70px; top: -35px; left: 22px; }
+  .c5::after  { width: 55px; height: 55px; top: -28px; left: 80px; }
+
+  @keyframes drift {
+    from { transform: translateX(0); }
+    to   { transform: translateX(120vw); }
+  }
+
+  /* ── GLOBE CANVAS ── */
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas { display: block; }
+
+  /* ── SHADOW UNDER GLOBE ── */
+  .globe-shadow {
+    position: fixed;
+    bottom: 14%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .globe-shadow-ellipse {
+    width: 340px;
+    height: 40px;
+    background: radial-gradient(ellipse, rgba(60,130,200,0.28) 0%, transparent 72%);
+    border-radius: 50%;
+    filter: blur(8px);
+    animation: shadow-pulse 3s ease-in-out infinite;
+  }
+  @keyframes shadow-pulse {
+    0%,100% { opacity: 0.8; transform: scaleX(1); }
+    50%      { opacity: 0.5; transform: scaleX(0.92); }
+  }
+
+  /* ── WII-STYLE SPEED BUTTONS ── */
+  .speed-control {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    pointer-events: all;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1.5px solid rgba(255,255,255,0.9);
+    border-radius: 50px;
+    padding: 8px 16px;
+    box-shadow:
+      0 4px 24px rgba(100,180,255,0.25),
+      0 1px 0 rgba(255,255,255,0.8) inset,
+      0 -1px 0 rgba(160,210,255,0.3) inset;
+  }
+
+  .speed-btn {
+    background: linear-gradient(180deg, #ffffff 0%, #d8eeff 100%);
+    border: 1.5px solid rgba(120,190,255,0.6);
+    color: #3a8ec8;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 7px 18px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow:
+      0 3px 8px rgba(80,160,255,0.2),
+      0 1px 0 rgba(255,255,255,0.9) inset;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    outline: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .speed-btn::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.7), transparent);
+    border-radius: 30px 30px 0 0;
+    pointer-events: none;
+  }
+  .speed-btn:hover {
+    background: linear-gradient(180deg, #ffffff 0%, #bee8ff 100%);
+    border-color: rgba(80,170,255,0.8);
+    box-shadow: 0 4px 14px rgba(80,160,255,0.35), 0 1px 0 rgba(255,255,255,0.9) inset;
+    transform: translateY(-1px);
+  }
+  .speed-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 4px rgba(80,160,255,0.2), 0 1px 0 rgba(255,255,255,0.9) inset;
+  }
+  .speed-btn.active {
+    background: linear-gradient(180deg, #6ec6ff 0%, #2196d3 100%);
+    border-color: rgba(30,130,210,0.7);
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0,80,160,0.4);
+    box-shadow: 0 3px 10px rgba(30,130,210,0.45), 0 1px 0 rgba(255,255,255,0.4) inset;
+  }
+  .speed-btn.active::after {
+    background: linear-gradient(180deg, rgba(255,255,255,0.45), transparent);
+  }
+
+  /* ── FLOATING SPARKLES ── */
+  .sparkle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+    animation: float-up linear forwards;
+    opacity: 0;
+  }
+  .sparkle::before {
+    content: '✦';
+    color: rgba(130,210,255,0.75);
+    font-size: 14px;
+  }
+  @keyframes float-up {
+    0%   { transform: translateY(0) rotate(0deg);   opacity: 0; }
+    15%  { opacity: 0.9; }
+    85%  { opacity: 0.6; }
+    100% { transform: translateY(-80px) rotate(180deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Clouds -->
+<div class="clouds">
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div class="cloud c3"></div>
+  <div class="cloud c4"></div>
+  <div class="cloud c5"></div>
+</div>
+
+<!-- Globe shadow -->
+<div class="globe-shadow">
+  <div class="globe-shadow-ellipse"></div>
+</div>
+
+<!-- Globe canvas -->
+<div id="canvas-container">
+  <canvas id="globe"></canvas>
+</div>
+
+<!-- Speed controls -->
+<div class="speed-control">
+  <button class="speed-btn" onclick="setSpeed(0, this)">⏸</button>
+  <button class="speed-btn active" onclick="setSpeed(1, this)">1×</button>
+  <button class="speed-btn" onclick="setSpeed(3, this)">3×</button>
+  <button class="speed-btn" onclick="setSpeed(8, this)">8×</button>
+</div>
+
+<script>
+const gc  = document.getElementById('globe');
+const ctx = gc.getContext('2d');
+let W, H, R;
+let rotX = 0.28, rotY = 0;
+let isDragging = false, lastMX, lastMY;
+let autoSpin = true, spinSpeed = 1, zoom = 1;
+const BASE = 0.003;
+
+function resize() {
+  const s = Math.min(window.innerWidth, window.innerHeight) * 0.70;
+  W = gc.width  = window.innerWidth;
+  H = gc.height = window.innerHeight;
+  R = s / 2;
+}
+
+const landmasses = [
+  [[-167,71],[-140,70],[-120,60],[-90,48],[-83,42],[-76,34],[-80,25],[-90,18],[-105,20],[-117,32],[-125,38],[-130,54],[-140,60],[-167,71]],
+  [[-82,12],[-62,12],[-50,5],[-35,-8],[-40,-20],[-50,-30],[-66,-44],[-68,-55],[-72,-50],[-75,-38],[-72,-22],[-80,-2],[-82,12]],
+  [[-10,36],[5,36],[20,37],[30,42],[35,48],[27,52],[20,55],[10,55],[0,51],[-5,44],[-10,36]],
+  [[5,58],[10,58],[18,65],[25,70],[28,72],[20,72],[12,68],[5,62],[5,58]],
+  [[-18,15],[0,15],[15,15],[38,12],[42,12],[42,0],[38,-12],[28,-30],[18,-34],[10,-34],[5,-22],[0,-10],[-10,0],[-18,15]],
+  [[30,42],[40,38],[55,22],[65,22],[72,22],[80,15],[92,20],[102,10],[110,20],[120,25],[130,35],[140,38],[145,44],[135,48],[125,50],[110,52],[100,52],[90,52],[80,55],[70,52],[60,50],[50,46],[40,46],[30,42]],
+  [[-55,82],[-20,82],[-15,76],[-20,72],[-30,68],[-45,68],[-55,74],[-55,82]],
+  [[115,-22],[126,-14],[136,-12],[140,-18],[148,-18],[152,-26],[148,-38],[138,-36],[130,-32],[120,-34],[114,-28],[115,-22]],
+  [[130,32],[132,34],[134,36],[137,35],[134,32],[130,32]],
+  [[-6,50],[-2,50],[2,52],[0,58],[-4,56],[-6,50]],
+  [[166,-46],[168,-43],[170,-44],[170,-46],[168,-48],[166,-46]],
+  [[108,-7],[115,-5],[118,-2],[118,-6],[112,-8],[108,-7]],
+  [[44,-12],[50,-14],[50,-20],[44,-25],[44,-18],[44,-12]],
+];
+
+function project(lon, lat, cx, cy, r) {
+  const lr = (lon * Math.PI) / 180, ar = (lat * Math.PI) / 180;
+  let x = Math.cos(ar) * Math.cos(lr);
+  let y = Math.sin(ar);
+  let z = Math.cos(ar) * Math.sin(lr);
+  const cY = Math.cos(rotY), sY = Math.sin(rotY);
+  [x, z] = [x*cY - z*sY, x*sY + z*cY];
+  const cX = Math.cos(rotX), sX = Math.sin(rotX);
+  [y, z] = [y*cX - z*sX, y*sX + z*cX];
+  if (z < 0) return null;
+  return { x: cx + x*r, y: cy - y*r };
+}
+
+function drawGlobe() {
+  ctx.clearRect(0, 0, W, H);
+  const cx = W/2, cy = H/2, r = R * zoom;
+
+  // Atmosphere halo
+  const atmo = ctx.createRadialGradient(cx, cy, r*0.9, cx, cy, r*1.25);
+  atmo.addColorStop(0,   'rgba(160,225,255,0.40)');
+  atmo.addColorStop(0.5, 'rgba(120,200,255,0.15)');
+  atmo.addColorStop(1,   'rgba(80,170,255,0)');
+  ctx.beginPath(); ctx.arc(cx, cy, r*1.25, 0, Math.PI*2);
+  ctx.fillStyle = atmo; ctx.fill();
+
+  // Ocean
+  const ocean = ctx.createRadialGradient(cx - r*0.25, cy - r*0.28, 0, cx, cy, r);
+  ocean.addColorStop(0,   '#72d4f8');
+  ocean.addColorStop(0.35,'#2ab8f0');
+  ocean.addColorStop(0.75,'#1090d8');
+  ocean.addColorStop(1,   '#0a65b0');
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fillStyle = ocean; ctx.fill();
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
+
+  // Grid lines
+  ctx.lineWidth = 0.5; ctx.strokeStyle = 'rgba(255,255,255,0.20)';
+  for (let lat = -80; lat <= 80; lat += 20) {
+    let first = true; ctx.beginPath();
+    for (let lon = -180; lon <= 180; lon += 2) {
+      const p = project(lon, lat, cx, cy, r);
+      if (p) { first ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y); first=false; } else first=true;
+    }
+    ctx.stroke();
+  }
+  for (let lon = -180; lon < 180; lon += 20) {
+    let first = true; ctx.beginPath();
+    for (let lat = -90; lat <= 90; lat += 2) {
+      const p = project(lon, lat, cx, cy, r);
+      if (p) { first ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y); first=false; } else first=true;
+    }
+    ctx.stroke();
+  }
+
+  // Land
+  const lg = ctx.createLinearGradient(cx - r*0.5, cy - r*0.5, cx + r*0.3, cy + r*0.3);
+  lg.addColorStop(0,   '#7ae07a');
+  lg.addColorStop(0.45,'#3fc452');
+  lg.addColorStop(1,   '#1e8f32');
+  for (const pts of landmasses) {
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < pts.length; i++) {
+      const p = project(pts[i][0], pts[i][1], cx, cy, r);
+      if (p) { i===0||!started ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y); started=true; }
+    }
+    ctx.closePath();
+    ctx.fillStyle = lg; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 0.9; ctx.stroke();
+  }
+
+  // Gloss — big soft upper-left shine
+  const gloss = ctx.createRadialGradient(cx-r*0.36, cy-r*0.40, 0, cx-r*0.08, cy-r*0.14, r*0.75);
+  gloss.addColorStop(0,    'rgba(255,255,255,0.78)');
+  gloss.addColorStop(0.20, 'rgba(255,255,255,0.42)');
+  gloss.addColorStop(0.50, 'rgba(255,255,255,0.10)');
+  gloss.addColorStop(1,    'rgba(255,255,255,0)');
+  ctx.fillStyle = gloss; ctx.fillRect(cx-r, cy-r, r*2, r*2);
+
+  // Gloss — tight highlight sparkle
+  const glint = ctx.createRadialGradient(cx-r*0.50, cy-r*0.52, 0, cx-r*0.44, cy-r*0.46, r*0.16);
+  glint.addColorStop(0,   'rgba(255,255,255,1.0)');
+  glint.addColorStop(0.4, 'rgba(255,255,255,0.45)');
+  glint.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.fillStyle = glint; ctx.fillRect(cx-r, cy-r, r*2, r*2);
+
+  // Bottom darkening
+  const dark = ctx.createRadialGradient(cx+r*0.12, cy+r*0.22, r*0.25, cx, cy, r);
+  dark.addColorStop(0,    'rgba(0,50,110,0)');
+  dark.addColorStop(0.62, 'rgba(0,40,100,0)');
+  dark.addColorStop(1,    'rgba(0,30,80,0.38)');
+  ctx.fillStyle = dark; ctx.fillRect(cx-r, cy-r, r*2, r*2);
+
+  ctx.restore();
+
+  // Glossy rim
+  const rim = ctx.createLinearGradient(cx-r, cy-r, cx+r, cy+r);
+  rim.addColorStop(0,    'rgba(255,255,255,0.95)');
+  rim.addColorStop(0.40, 'rgba(180,235,255,0.60)');
+  rim.addColorStop(1,    'rgba(60,140,220,0.25)');
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.strokeStyle = rim; ctx.lineWidth = 3.5; ctx.stroke();
+
+  // Outer soft halo ring
+  ctx.beginPath(); ctx.arc(cx, cy, r+8, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(140,210,255,0.20)'; ctx.lineWidth = 14; ctx.stroke();
+}
+
+// ── DRAG ─────────────────────────────────────────────────────────────────────
+gc.addEventListener('mousedown', e => {
+  isDragging=true; lastMX=e.clientX; lastMY=e.clientY;
+  document.body.classList.add('dragging'); autoSpin=false;
+});
+window.addEventListener('mouseup', () => {
+  if (!isDragging) return;
+  isDragging=false; document.body.classList.remove('dragging');
+  autoSpin = spinSpeed > 0;
+});
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  rotY += (e.clientX-lastMX)*0.006;
+  rotX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotX+(e.clientY-lastMY)*0.006));
+  lastMX=e.clientX; lastMY=e.clientY;
+});
+gc.addEventListener('touchstart', e => {
+  isDragging=true; lastMX=e.touches[0].clientX; lastMY=e.touches[0].clientY; autoSpin=false;
+});
+window.addEventListener('touchend', () => { isDragging=false; autoSpin=spinSpeed>0; });
+window.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  rotY += (e.touches[0].clientX-lastMX)*0.006;
+  rotX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotX+(e.touches[0].clientY-lastMY)*0.006));
+  lastMX=e.touches[0].clientX; lastMY=e.touches[0].clientY;
+}, {passive:true});
+window.addEventListener('wheel', e => {
+  zoom = Math.max(0.5, Math.min(2.0, zoom + e.deltaY*-0.001));
+}, {passive:true});
+
+function setSpeed(s, btn) {
+  spinSpeed=s;
+  document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  autoSpin = s > 0;
+}
+
+// ── SPARKLES ─────────────────────────────────────────────────────────────────
+function spawnSparkle() {
+  const el = document.createElement('div');
+  el.className = 'sparkle';
+  const angle = Math.random() * Math.PI * 2;
+  const rad   = Math.min(W,H)*0.35 * (0.65 + Math.random()*0.5);
+  el.style.left = (W/2 + Math.cos(angle)*rad) + 'px';
+  el.style.top  = (H/2 + Math.sin(angle)*rad) + 'px';
+  const dur = 2 + Math.random()*2.5;
+  el.style.animationDuration = dur + 's';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), dur*1000);
+}
+setInterval(spawnSparkle, 550);
+
+// ── LOOP ─────────────────────────────────────────────────────────────────────
+function loop() {
+  if (autoSpin && spinSpeed > 0) rotY += BASE * spinSpeed;
+  drawGlobe();
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', resize);
+resize();
+loop();
+</script>
+</body>
+</html>
